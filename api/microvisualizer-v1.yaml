@@ -1,0 +1,2425 @@
+openapi: 3.0.4
+
+info:
+  title: MicroVisualizer API
+  description: |
+    The MicroVisualizer API enables creation, visualization, and management of microservices architecture diagrams.
+    It supports defining services, messaging topics (Kafka, RabbitMQ, etc.), their relationships,
+    and organizing them into categories, owners, and business flows.
+
+    ## Rate Limiting
+
+    All API endpoints are subject to rate limiting. When the rate limit is exceeded, the API returns
+    a `429 Too Many Requests` response with a `Retry-After` header indicating how many seconds to wait
+    before retrying. Clients should implement exponential backoff when receiving 429 responses.
+  version: 1.0.0
+
+servers:
+  - url: "https://api.microvisualizer.com"
+
+security:
+  - SessionAuth: []
+  - ApiKeyAuth: []
+
+paths:
+  /v1/limits:
+    get:
+      summary: Get current organization limits and usage
+      operationId: getLimits
+      tags:
+        - MicroVisualizer
+      responses:
+        200:
+          description: Current limits and usage
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LimitsGet"
+        401:
+          $ref: "#/components/responses/Unauthorized"
+        429:
+          $ref: "#/components/responses/RateLimited"
+        500:
+          $ref: "#/components/responses/InternalError"
+
+  /v1/billing/subscription:
+    get:
+      summary: Get current organization subscription status
+      operationId: getSubscription
+      tags:
+        - MicroVisualizer
+      responses:
+        200:
+          description: The current subscription
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SubscriptionGet"
+        401:
+          $ref: "#/components/responses/Unauthorized"
+        429:
+          $ref: "#/components/responses/RateLimited"
+        500:
+          $ref: "#/components/responses/InternalError"
+
+  /v1/billing/portal-session:
+    post:
+      summary: Create a Paddle customer portal session URL
+      operationId: createPortalSession
+      tags:
+        - MicroVisualizer
+      responses:
+        200:
+          description: The portal session URL
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PortalSessionGet"
+        401:
+          $ref: "#/components/responses/Unauthorized"
+        403:
+          $ref: "#/components/responses/Forbidden"
+        404:
+          description: No subscription found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        429:
+          $ref: "#/components/responses/RateLimited"
+        500:
+          $ref: "#/components/responses/InternalError"
+
+  /v1/billing/ai-credits:
+    get:
+      summary: Get current organization AI credit balance
+      operationId: getAiCredits
+      tags:
+        - MicroVisualizer
+      responses:
+        200:
+          description: Current AI credit balance
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AiCreditsGet"
+        401:
+          $ref: "#/components/responses/Unauthorized"
+        429:
+          $ref: "#/components/responses/RateLimited"
+        500:
+          $ref: "#/components/responses/InternalError"
+
+  /v1/billing/subscription/switch-cycle:
+    post:
+      summary: Switch subscription billing cycle (monthly ↔ annual)
+      operationId: switchBillingCycle
+      tags:
+        - MicroVisualizer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SubscriptionSwitchCycle"
+      responses:
+        200:
+          description: Updated subscription
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SubscriptionGet"
+        400:
+          description: Invalid billing cycle value
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        401:
+          $ref: "#/components/responses/Unauthorized"
+        403:
+          $ref: "#/components/responses/Forbidden"
+        404:
+          description: No subscription found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        429:
+          $ref: "#/components/responses/RateLimited"
+        500:
+          $ref: "#/components/responses/InternalError"
+
+  /v1/pinned:
+    post:
+      summary: Pin a project for quick access
+      description: |
+        Pins a project for the authenticated member, making it appear in their pinned projects list.
+        Pinned projects are typically displayed at the top of project lists for easy access to frequently used projects.
+        A member can have multiple pinned projects.
+      operationId: createPinned
+      tags:
+        - MicroVisualizer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PinnedProject"
+        required: true
+      responses:
+        200:
+          description: The pinned project
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PinnedProject"
+        400:
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidationError"
+        401:
+          $ref: "#/components/responses/Unauthorized"
+        404:
+          description: Project not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        429:
+          $ref: "#/components/responses/RateLimited"
+        500:
+          $ref: "#/components/responses/InternalError"
+    get:
+      summary: List all pinned projects for the current member
+      description: |
+        Retrieves all projects that the authenticated member has pinned.
+        The list is ordered by the time each project was pinned, with most recently pinned projects first.
+      operationId: getPinned
+      tags:
+        - MicroVisualizer
+      responses:
+        200:
+          description: The pinned projects
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PinnedProject"
+        401:
+          $ref: "#/components/responses/Unauthorized"
+        429:
+          $ref: "#/components/responses/RateLimited"
+        500:
+          $ref: "#/components/responses/InternalError"
+
+  /v1/pinned/{projectId}:
+    parameters:
+      - in: path
+        name: projectId
+        required: true
+        schema:
+          $ref: "#/components/schemas/ProjectId"
+    delete:
+      summary: Unpin a project
+      description: |
+        Removes a project from the authenticated member's pinned projects list.
+      operationId: deletePinned
+      tags:
+        - MicroVisualizer
+      responses:
+        204:
+          description: Project successfully unpinned from the member's pinned list
+        401:
+          $ref: "#/components/responses/Unauthorized"
+        404:
+          description: Project not found or not pinned
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        429:
+          $ref: "#/components/responses/RateLimited"
+        500:
+          $ref: "#/components/responses/InternalError"
+
+  /v1/projects:
+    post:
+      summary: Create a new project
+      description: |
+        Creates a new project to document and visualize a microservices architecture.
+        Projects serve as containers for services, messaging topics, and their relationships.
+        After creation, you can add services and define their interactions through messaging.
+      operationId: createProject
+      tags:
+        - MicroVisualizer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProjectCreate"
+        required: true
+      responses:
+        200:
+          description: Successfully created project
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectGet"
+        400:
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidationError"
+        401:
+          $ref: "#/components/responses/Unauthorized"
+        429:
+          $ref: "#/components/responses/RateLimited"
+        500:
+          $ref: "#/components/responses/InternalError"
+    get:
+      summary: List projects with filtering and pagination
+      description: |
+        Retrieves a paginated list of projects accessible to the authenticated member.
+        Supports filtering by pinned status, archived status, creator, and text search.
+        Projects are returned without their nested services for performance. Use GET /projects/{id} for full details.
+        Results are sorted by most recently updated first.
+      operationId: getProjects
+      tags:
+        - MicroVisualizer
+      parameters:
+        - in: query
+          name: page
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+          description: Page number (0-based)
+        - in: query
+          name: size
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+          description: Number of items per page
+        - in: query
+          name: pinned
+          required: false
+          schema:
+            type: boolean
+          description: Filter by pinned status (if not provided, returns all projects regardless of pinned status)
+        - in: query
+          name: archived
+          required: false
+          schema:
+            type: boolean
+          description: Filter by archived status (if not provided, returns all projects regardless of archived status)
+        - in: query
+          name: createdBy
+          required: false
+          schema:
+            type: string
+          description: Filter by projects created by the specified member id
+        - in: query
+          name: query
+          required: false
+          schema:
+            type: string
+          description: Search query to filter projects by name (case-insensitive partial match)
+      responses:
+        200:
+          description: The projects without the services
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectPage"
+        400:
+          description: Invalid query parameters
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        401:
+          $ref: "#/components/responses/Unauthorized"
+        429:
+          $ref: "#/components/responses/RateLimited"
+        500:
+          $ref: "#/components/responses/InternalError"
+
+  /v1/projects/{projectId}:
+    parameters:
+      - in: path
+        name: projectId
+        required: true
+        schema:
+          $ref: "#/components/schemas/ProjectId"
+    put:
+      summary: Update project metadata
+      description: |
+        Updates project properties such as name, description, or archived status.
+        Only provided fields are updated, omitted fields remain unchanged (partial update).
+      operationId: updateProject
+      tags:
+        - MicroVisualizer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProjectUpdate"
+        required: true
+      responses:
+        200:
+          description: The project
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectGet"
+        400:
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidationError"
+        401:
+          $ref: "#/components/responses/Unauthorized"
+        403:
+          $ref: "#/components/responses/Forbidden"
+        404:
+          description: Project not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        429:
+          $ref: "#/components/responses/RateLimited"
+        500:
+          $ref: "#/components/responses/InternalError"
+    get:
+      summary: Retrieve a single project by ID
+      description: |
+        Fetches details of a specific project identified by its unique project ID.
+        Returns project metadata including creation/update information and pinned/archived status.
+        Does not include nested services. Use /projects/{id}/services to retrieve services.
+      operationId: getProject
+      tags:
+        - MicroVisualizer
+      responses:
+        200:
+          description: Successfully retrieved project metadata
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectGet"
+        401:
+          $ref: "#/components/responses/Unauthorized"
+        404:
+          description: Project not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        429:
+          $ref: "#/components/responses/RateLimited"
+        500:
+          $ref: "#/components/responses/InternalError"
+    delete:
+      summary: Permanently delete a project
+      description: |
+        Permanently deletes a project and all associated data including services, messaging topics, categories, owners, flows, and relationships.
+        This operation cannot be undone. Consider archiving the project instead (PUT with archived=true) if you may need it later.
+      operationId: deleteProject
+      tags:
+        - MicroVisualizer
+      responses:
+        204:
+          description: Project and all associated data successfully deleted
+        401:
+          $ref: "#/components/responses/Unauthorized"
+        403:
+          $ref: "#/components/responses/Forbidden"
+        404:
+          description: Project not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        429:
+          $ref: "#/components/responses/RateLimited"
+        500:
+          $ref: "#/components/responses/InternalError"
+
+  /v1/projects/{projectId}/duplicate:
+    parameters:
+      - in: path
+        name: projectId
+        required: true
+        schema:
+          $ref: "#/components/schemas/ProjectId"
+    post:
+      summary: Create a complete copy of an existing project
+      description: |
+        Creates a complete duplicate of a project including all services, messaging topics, categories, owners, flows, and their relationships.
+        Useful for creating variations of an architecture, testing changes, or copying to a different environment.
+        Optionally provide a new name for the duplicate; if omitted, uses the same name as the source project.
+      operationId: duplicateProject
+      tags:
+        - MicroVisualizer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProjectDuplicate"
+        required: false
+      responses:
+        200:
+          description: The duplicated project
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectGet"
+        400:
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidationError"
+        401:
+          $ref: "#/components/responses/Unauthorized"
+        404:
+          description: Source project not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        429:
+          $ref: "#/components/responses/RateLimited"
+        500:
+          $ref: "#/components/responses/InternalError"
+
+  /v1/projects/{projectId}/graph:
+    parameters:
+      - in: path
+        name: projectId
+        required: true
+        schema:
+          $ref: "#/components/schemas/ProjectId"
+    get:
+      summary: Get graph visualization data
+      description: |
+        Returns a graph representation of the project's architecture with nodes (services and topics) and edges (relationships).
+        Supports focusing on specific entities and controlling relationship depth for partial graph views.
+        The response includes positioning data and styling information for visualization (colors, coordinates, dimensions).
+      operationId: getProjectGraph
+      tags:
+        - MicroVisualizer
+      parameters:
+        - in: query
+          name: filteredIds
+          required: false
+          schema:
+            type: array
+            items:
+              type: string
+            description: Entity IDs to filter by (e.g., "service--payment", "category--billing")
+          style: form
+        - in: query
+          name: depth
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+            maximum: 5
+            default: 1
+            description: Relationship depth levels (0=entity only, 1=direct connections, etc.)
+        - in: query
+          name: at
+          required: false
+          schema:
+            type: string
+            format: date-time
+            description: ISO-8601 timestamp to retrieve the project state at a specific point in time. If omitted, returns the current state.
+      responses:
+        200:
+          description: The project graph with nodes and edges
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectGraph"
+        400:
+          description: Invalid query parameters
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        401:
+          $ref: "#/components/responses/Unauthorized"
+        404:
+          description: Project not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        429:
+          $ref: "#/components/responses/RateLimited"
+        500:
+          $ref: "#/components/responses/InternalError"
+
+  /v1/projects/{projectId}/graph/mermaid:
+    parameters:
+      - in: path
+        name: projectId
+        required: true
+        schema:
+          $ref: "#/components/schemas/ProjectId"
+    get:
+      summary: Get graph as Mermaid diagram
+      description: |
+        Returns the project's architecture graph as a Mermaid flowchart diagram.
+        This is useful for embedding in README files or documentation on GitHub.
+        Services are shown as boxes, topics as stadium shapes, and arrows show data flow.
+      operationId: getProjectGraphMermaid
+      tags:
+        - MicroVisualizer
+      parameters:
+        - in: query
+          name: filteredIds
+          required: false
+          schema:
+            type: array
+            items:
+              type: string
+            description: Entity IDs to filter by (e.g., "service--payment", "category--billing")
+          style: form
+        - in: query
+          name: depth
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+            maximum: 5
+            default: 1
+            description: Relationship depth levels (0=entity only, 1=direct connections, etc.)
+        - in: query
+          name: at
+          required: false
+          schema:
+            type: string
+            format: date-time
+            description: ISO-8601 timestamp to retrieve the project state at a specific point in time. If omitted, returns the current state.
+      responses:
+        200:
+          description: The project graph as a Mermaid flowchart diagram
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: |
+                  flowchart LR
+                    service--order-service[Order Service]
+                    messaging--orders-topic([orders-topic])
+                    service--order-service --> messaging--orders-topic
+        400:
+          description: Invalid query parameters
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        401:
+          $ref: "#/components/responses/Unauthorized"
+        404:
+          description: Project not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        429:
+          $ref: "#/components/responses/RateLimited"
+        500:
+          $ref: "#/components/responses/InternalError"
+
+  /v1/projects/{projectId}/graph/svg:
+    parameters:
+      - in: path
+        name: projectId
+        required: true
+        schema:
+          $ref: "#/components/schemas/ProjectId"
+    get:
+      summary: Get graph as SVG image
+      description: |
+        Returns the project's architecture graph as an SVG image.
+        Services are shown as rectangles, topics as stadium shapes (rounded rectangles), and arrows show data flow.
+        Node colors are based on their category color if assigned.
+      operationId: getProjectGraphSvg
+      tags:
+        - MicroVisualizer
+      parameters:
+        - in: query
+          name: filteredIds
+          required: false
+          schema:
+            type: array
+            items:
+              type: string
+            description: Entity IDs to filter by (e.g., "service--payment", "category--billing")
+          style: form
+        - in: query
+          name: depth
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+            maximum: 5
+            default: 1
+            description: Relationship depth levels (0=entity only, 1=direct connections, etc.)
+        - in: query
+          name: at
+          required: false
+          schema:
+            type: string
+            format: date-time
+            description: ISO-8601 timestamp to retrieve the project state at a specific point in time. If omitted, returns the current state.
+      responses:
+        200:
+          description: The project graph as an SVG image
+          content:
+            image/svg+xml:
+              schema:
+                type: string
+        400:
+          description: Invalid query parameters
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        401:
+          $ref: "#/components/responses/Unauthorized"
+        404:
+          description: Project not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        429:
+          $ref: "#/components/responses/RateLimited"
+        500:
+          $ref: "#/components/responses/InternalError"
+
+  /v1/projects/{projectId}/entities:
+    parameters:
+      - in: path
+        name: projectId
+        required: true
+        schema:
+          $ref: "#/components/schemas/ProjectId"
+    get:
+      summary: Get all entities with full relationship data
+      description: |
+        Returns a comprehensive view of all entities in the project organized by type.
+        Includes services, messaging topics, categories, owners, and flows with their complete relationship data.
+        This endpoint provides a full data model suitable for building custom visualizations, reports, or exports.
+      operationId: getProjectEntities
+      tags:
+        - MicroVisualizer
+      parameters:
+        - in: query
+          name: at
+          required: false
+          schema:
+            type: string
+            format: date-time
+            description: ISO-8601 timestamp to retrieve the project state at a specific point in time. If omitted, returns the current state.
+      responses:
+        200:
+          description: Complete entity data with all relationships indexed by entity ID
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectEntities"
+        401:
+          $ref: "#/components/responses/Unauthorized"
+        404:
+          description: Project not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        429:
+          $ref: "#/components/responses/RateLimited"
+        500:
+          $ref: "#/components/responses/InternalError"
+
+  /v1/projects/{projectId}/services:
+    parameters:
+      - in: path
+        name: projectId
+        required: true
+        schema:
+          $ref: "#/components/schemas/ProjectId"
+    post:
+      summary: Create a new service in the project
+      description: |
+        Adds a microservice definition to the project with properties like name, category, owner, and messaging relationships.
+        Services can produce to and consume from messaging topics to document data flows.
+        Service names must be unique within the project and will be automatically converted to URL-friendly slugs.
+      operationId: createService
+      tags:
+        - MicroVisualizer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ServiceCreate"
+        required: true
+      responses:
+        200:
+          description: The created service
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServiceGet"
+        400:
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidationError"
+        401:
+          $ref: "#/components/responses/Unauthorized"
+        404:
+          description: Project not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        409:
+          description: Service with this name already exists in the project
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        429:
+          $ref: "#/components/responses/RateLimited"
+        500:
+          $ref: "#/components/responses/InternalError"
+    get:
+      summary: List all services in the project
+      description: |
+        Retrieves all service definitions for the specified project.
+        Each service includes its full configuration, messaging relationships (produces/consumes), and audit metadata.
+        Returns the latest snapshot of each service with complete relationship data.
+      operationId: getServices
+      tags:
+        - MicroVisualizer
+      parameters:
+        - in: query
+          name: at
+          required: false
+          schema:
+            type: string
+            format: date-time
+            description: ISO-8601 timestamp to retrieve services as they existed at a specific point in time. If omitted, returns the current state.
+      responses:
+        200:
+          description: Array of all services in the project with their latest snapshots
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ServiceGet"
+        401:
+          $ref: "#/components/responses/Unauthorized"
+        404:
+          description: Project not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        429:
+          $ref: "#/components/responses/RateLimited"
+        500:
+          $ref: "#/components/responses/InternalError"
+
+  /v1/projects/{projectId}/services/{serviceSlug}:
+    parameters:
+      - in: path
+        name: projectId
+        required: true
+        schema:
+          $ref: "#/components/schemas/ProjectId"
+      - in: path
+        name: serviceSlug
+        required: true
+        schema:
+          type: string
+          description: The slug (URL-friendly identifier) of the service
+    get:
+      summary: Retrieve a specific service by slug
+      description: |
+        Fetches complete details of a service identified by its URL-friendly slug.
+        Returns the latest snapshot of the service with all properties, messaging relationships, and audit information.
+      operationId: getService
+      tags:
+        - MicroVisualizer
+      parameters:
+        - in: query
+          name: at
+          required: false
+          schema:
+            type: string
+            format: date-time
+            description: ISO-8601 timestamp to retrieve the service as it existed at a specific point in time. If omitted, returns the current state.
+      responses:
+        200:
+          description: Service details with latest snapshot and full relationship data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServiceGet"
+        401:
+          $ref: "#/components/responses/Unauthorized"
+        404:
+          description: Project or service not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        429:
+          $ref: "#/components/responses/RateLimited"
+        500:
+          $ref: "#/components/responses/InternalError"
+    put:
+      summary: Update an existing service
+      description: |
+        Updates service properties, messaging relationships, or custom fields.
+        Only provided fields are updated, omitted fields remain unchanged (partial update).
+        Changing the service name will update its slug to match the new name.
+        Creates a new service snapshot preserving the history of changes.
+      operationId: updateService
+      tags:
+        - MicroVisualizer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ServiceUpdate"
+        required: true
+      responses:
+        200:
+          description: The updated service
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServiceGet"
+        400:
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidationError"
+        401:
+          $ref: "#/components/responses/Unauthorized"
+        404:
+          description: Project or service not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        409:
+          description: Service name conflict
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        429:
+          $ref: "#/components/responses/RateLimited"
+        500:
+          $ref: "#/components/responses/InternalError"
+
+    delete:
+      summary: Remove a service from the project
+      description: |
+        Removes a service from the project starting from the current point in time.
+        The service's historical snapshots are preserved for audit purposes.
+        This removes the service from the current project view and its messaging relationships.
+      operationId: deleteService
+      tags:
+        - MicroVisualizer
+      responses:
+        204:
+          description: Service successfully removed from the project
+        401:
+          $ref: "#/components/responses/Unauthorized"
+        404:
+          description: Project or service not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        429:
+          $ref: "#/components/responses/RateLimited"
+        500:
+          $ref: "#/components/responses/InternalError"
+
+  /v1/projects/{projectId}/services/{serviceSlug}/raw:
+    parameters:
+      - in: path
+        name: projectId
+        required: true
+        schema:
+          $ref: "#/components/schemas/ProjectId"
+      - in: path
+        name: serviceSlug
+        required: true
+        schema:
+          type: string
+          description: The slug (URL-friendly identifier) of the service
+    get:
+      summary: Get raw service data as stored in the database
+      description: |
+        Returns the service data exactly as stored in the database without any transformations or denormalization.
+        Useful for debugging, exporting service configurations, or understanding the internal data structure.
+        The schema matches the internal storage format which may differ from the standard GET response.
+      operationId: getServiceRaw
+      tags:
+        - MicroVisualizer
+      parameters:
+        - in: query
+          name: at
+          required: false
+          schema:
+            type: string
+            format: date-time
+            description: ISO-8601 timestamp to retrieve the raw service data as it existed at a specific point in time. If omitted, returns the current state.
+      responses:
+        200:
+          description: Raw service JSON data from database
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServiceRaw"
+        401:
+          $ref: "#/components/responses/Unauthorized"
+        404:
+          description: Project or service not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        429:
+          $ref: "#/components/responses/RateLimited"
+        500:
+          $ref: "#/components/responses/InternalError"
+
+  /v1/projects/{projectId}/ai/chat:
+    parameters:
+      - in: path
+        name: projectId
+        required: true
+        schema:
+          $ref: "#/components/schemas/ProjectId"
+    post:
+      summary: Send a message to the AI assistant for a project
+      description: |
+        Sends a message to the AI assistant in the context of the specified project.
+        The assistant can answer questions about the project's services, messaging topics,
+        and their relationships. An optional conversation history can be provided to maintain context.
+      operationId: chatProject
+      tags:
+        - MicroVisualizer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AiChatRequest"
+      responses:
+        200:
+          description: The AI assistant response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AiChatResponse"
+        401:
+          $ref: "#/components/responses/Unauthorized"
+        404:
+          description: Project not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        429:
+          $ref: "#/components/responses/RateLimited"
+        500:
+          $ref: "#/components/responses/InternalError"
+
+  /v1/projects/{projectId}/history:
+    parameters:
+      - in: path
+        name: projectId
+        required: true
+        schema:
+          $ref: "#/components/schemas/ProjectId"
+    get:
+      summary: Get the change history of a project
+      operationId: getProjectHistory
+      tags:
+        - MicroVisualizer
+      parameters:
+        - in: query
+          name: page
+          required: false
+          schema:
+            type: integer
+            default: 0
+        - in: query
+          name: size
+          required: false
+          schema:
+            type: integer
+            default: 50
+      responses:
+        200:
+          description: Paginated list of history events
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectHistory"
+        401:
+          $ref: "#/components/responses/Unauthorized"
+        404:
+          description: Project not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        429:
+          $ref: "#/components/responses/RateLimited"
+        500:
+          $ref: "#/components/responses/InternalError"
+
+  /v1/projects/{projectId}/history/{snapshotId}/diff:
+    parameters:
+      - in: path
+        name: projectId
+        required: true
+        schema:
+          $ref: "#/components/schemas/ProjectId"
+      - in: path
+        name: snapshotId
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      summary: Get the field-level diff for a history event
+      operationId: getServiceSnapshotDiff
+      tags:
+        - MicroVisualizer
+      responses:
+        200:
+          description: Field-level diff between this snapshot and its predecessor
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServiceSnapshotDiff"
+        401:
+          $ref: "#/components/responses/Unauthorized"
+        404:
+          description: Project or snapshot not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        429:
+          $ref: "#/components/responses/RateLimited"
+        500:
+          $ref: "#/components/responses/InternalError"
+
+  /v1/projects/{projectId}/public-share-token:
+    parameters:
+      - in: path
+        name: projectId
+        required: true
+        schema:
+          $ref: "#/components/schemas/ProjectId"
+    post:
+      summary: Create or regenerate a share token for a project
+      description: |
+        Creates a public share token for the project, or replaces the existing one.
+        Anyone with the resulting link can view the project graph without authentication.
+        Regenerating the token immediately invalidates any existing links or embeds.
+      operationId: createPublicShareToken
+      tags:
+        - MicroVisualizer
+      responses:
+        200:
+          description: The share token and public URL
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublicShareToken"
+        401:
+          $ref: "#/components/responses/Unauthorized"
+        403:
+          $ref: "#/components/responses/Forbidden"
+        404:
+          description: Project not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        429:
+          $ref: "#/components/responses/RateLimited"
+        500:
+          $ref: "#/components/responses/InternalError"
+    get:
+      summary: Get the current share token for a project
+      operationId: getPublicShareToken
+      tags:
+        - MicroVisualizer
+      responses:
+        200:
+          description: The current share token and public URL
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublicShareToken"
+        401:
+          $ref: "#/components/responses/Unauthorized"
+        404:
+          description: Project not found or no share token exists
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        429:
+          $ref: "#/components/responses/RateLimited"
+        500:
+          $ref: "#/components/responses/InternalError"
+    delete:
+      summary: Revoke the share token for a project
+      description: |
+        Permanently deletes the share token. Any existing public links or embeds will stop working immediately.
+      operationId: deletePublicShareToken
+      tags:
+        - MicroVisualizer
+      responses:
+        204:
+          description: Share token successfully revoked
+        401:
+          $ref: "#/components/responses/Unauthorized"
+        403:
+          $ref: "#/components/responses/Forbidden"
+        404:
+          description: Project not found or no share token exists
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        429:
+          $ref: "#/components/responses/RateLimited"
+        500:
+          $ref: "#/components/responses/InternalError"
+
+components:
+  securitySchemes:
+    SessionAuth:
+      type: apiKey
+      in: cookie
+      name: __session
+      description: |
+        Session-based authentication using an HTTP-only cookie.
+
+        When you sign in through the web application, a session cookie named `__session`
+        is automatically set by the authentication provider. This cookie contains a JWT
+        token that identifies your user session and organization membership.
+
+        **For Browser/Web Clients:**
+        - The cookie is automatically included in requests by the browser
+        - No manual configuration needed after authentication
+
+        **For API Clients:**
+        - You must obtain a valid session token through the authentication flow
+        - Include the cookie in your requests: `Cookie: __session=<your-token>`
+
+        **Security Notes:**
+        - Tokens are scoped to your organization
+        - Tokens expire after a period of inactivity
+        - Always use HTTPS in production to protect the session token
+
+    ApiKeyAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        API key authentication for machine-to-machine communication.
+
+        API keys allow automated systems and services to authenticate without user interaction.
+        Each API key is associated with an organization and has its own permissions.
+
+        **Usage:**
+        - Include the API key in the Authorization header: `Authorization: Bearer <your-api-key>`
+
+        **Obtaining an API Key:**
+        - API keys can be generated from your organization settings in the web application
+        - Each key is tied to a specific organization
+
+        **Security Notes:**
+        - Treat API keys like passwords - never commit them to version control
+        - Rotate keys regularly
+        - Use different keys for different environments (dev, staging, production)
+        - Keys can be revoked immediately if compromised
+
+  responses:
+    Unauthorized:
+      description: Unauthorized, authentication required
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Forbidden:
+      description: Forbidden, insufficient permissions
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    RateLimited:
+      description: Too many requests
+      headers:
+        Retry-After:
+          description: Number of seconds to wait before retrying
+          schema:
+            type: integer
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/RateLimitError"
+    InternalError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
+  schemas:
+    ErrorCode:
+      type: string
+      description: Machine-readable error code in snake_case
+      enum:
+        - bad_request
+        - unauthorized
+        - payment_required
+        - forbidden
+        - not_found
+        - conflict
+        - rate_limited
+        - internal_error
+        - project_not_found
+        - project_limit_reached
+        - service_not_found
+        - service_name_conflict
+        - subscription_not_found
+        - customer_not_found
+        - insufficient_ai_credits
+        - invalid_billing_cycle
+        - validation_failed
+        - resource_already_exists
+        - public_share_token_not_found
+
+    ErrorResponse:
+      type: object
+      description: Standard error response
+      additionalProperties: false
+      required:
+        - status
+        - code
+        - message
+      properties:
+        status:
+          type: integer
+          description: HTTP status code
+          example: 400
+        code:
+          $ref: "#/components/schemas/ErrorCode"
+        message:
+          type: string
+          description: Error message
+          example: "Validation failed"
+        details:
+          type: string
+          description: Additional error details
+          example: "Project name must be between 3 and 60 characters"
+
+    ValidationError:
+      type: object
+      description: Validation error response with field-level details
+      additionalProperties: false
+      required:
+        - status
+        - code
+        - message
+        - violations
+      properties:
+        status:
+          type: integer
+          description: HTTP status code
+          example: 400
+        code:
+          $ref: "#/components/schemas/ErrorCode"
+        message:
+          type: string
+          description: Error message
+          example: "Validation failed"
+        violations:
+          type: array
+          description: List of field validation violations
+          items:
+            $ref: "#/components/schemas/ValidationViolation"
+
+    ValidationViolation:
+      type: object
+      description: Individual field validation violation
+      additionalProperties: false
+      required:
+        - field
+        - message
+      properties:
+        field:
+          type: string
+          description: The field that failed validation
+          example: "name"
+        message:
+          type: string
+          description: Validation error message for this field
+          example: "must not be blank"
+        rejectedValue:
+          description: The value that was rejected (optional)
+          nullable: true
+
+    RateLimitError:
+      type: object
+      description: Rate limit exceeded error response
+      additionalProperties: false
+      required:
+        - status
+        - code
+        - message
+        - retryAfter
+      properties:
+        status:
+          type: integer
+          description: HTTP status code
+          example: 429
+        code:
+          $ref: "#/components/schemas/ErrorCode"
+        message:
+          type: string
+          description: Error message
+          example: "Too many requests"
+        retryAfter:
+          type: integer
+          description: Number of seconds until the client can retry
+          example: 60
+
+    PublicShareToken:
+      type: object
+      description: Current share token for a project
+      additionalProperties: false
+      required:
+        - token
+        - createdAt
+      properties:
+        token:
+          type: string
+          description: The share token (UUID v4)
+        createdAt:
+          type: string
+          format: date-time
+          description: When the token was created
+
+    LimitsGet:
+      type: object
+      description: Current organization plan limits and usage
+      additionalProperties: false
+      required:
+        - currentProjects
+        - maxProjects
+      properties:
+        currentProjects:
+          type: integer
+          description: Number of projects currently in the organization
+        maxProjects:
+          type: integer
+          description: Maximum number of projects allowed by the current plan
+
+    AiCreditsGet:
+      type: object
+      description: Current organization AI credit balance
+      additionalProperties: false
+      required:
+        - remaining
+      properties:
+        remaining:
+          type: number
+          description: Credits remaining
+        resetsAt:
+          type: string
+          format: date-time
+          description: When credits will next reset
+
+    SubscriptionGet:
+      type: object
+      description: Current organization subscription status
+      additionalProperties: false
+      required:
+        - status
+      properties:
+        status:
+          type: string
+          description: Subscription status
+          enum:
+            - none
+            - active
+            - trialing
+            - past_due
+            - paused
+            - canceled
+        planName:
+          type: string
+          description: Name of the subscribed plan
+        currentPeriodEnd:
+          type: string
+          format: date-time
+          description: End of the current billing period
+        paddleCustomerId:
+          type: string
+          description: Paddle customer ID
+        paddleSubscriptionId:
+          type: string
+          description: Paddle subscription ID
+        billingCycle:
+          type: string
+          enum: [monthly, annual]
+          description: Billing cycle interval
+        nextBilledAt:
+          type: string
+          format: date-time
+          description: When the next bill will be received
+
+    SubscriptionSwitchCycle:
+      type: object
+      description: Request to switch subscription billing cycle
+      additionalProperties: false
+      required:
+        - billingCycle
+      properties:
+        billingCycle:
+          type: string
+          enum: [monthly, annual]
+          description: Target billing cycle interval
+
+    PortalSessionGet:
+      type: object
+      description: Paddle customer portal session
+      additionalProperties: false
+      required:
+        - url
+      properties:
+        url:
+          type: string
+          description: URL to the Paddle customer portal
+
+    ProjectCreate:
+      type: object
+      description: The project
+      additionalProperties: false
+      required:
+        - name
+        - description
+      properties:
+        name:
+          type: string
+          description: The name of this project
+          minLength: 3
+          maxLength: 60
+        description:
+          type: string
+          description: A description of this project
+          maxLength: 200
+
+    ProjectUpdate:
+      type: object
+      description: The project
+      additionalProperties: false
+      properties:
+        name:
+          type: string
+          description: The name of this project
+          minLength: 3
+          maxLength: 60
+        description:
+          type: string
+          description: A description of this project
+          maxLength: 200
+        archived:
+          type: boolean
+          description: The project is archived
+
+    ProjectDuplicate:
+      type: object
+      description: Request body for duplicating a project
+      additionalProperties: false
+      properties:
+        name:
+          type: string
+          description: The name for the duplicated project. If not provided, uses the same name as the source project.
+          minLength: 3
+          maxLength: 60
+
+    ActorType:
+      type: string
+      description: The type of actor (user or API key)
+      enum:
+        - MEMBER
+        - API_KEY
+
+    ProjectGet:
+      type: object
+      description: The project
+      additionalProperties: false
+      required:
+        - id
+        - name
+        - description
+        - isOwner
+        - createdBy
+        - createdByType
+        - updatedBy
+        - updatedByType
+        - createdAt
+        - updatedAt
+        - archived
+        - pinned
+        - serviceCount
+      properties:
+        id:
+          $ref: "#/components/schemas/ProjectId"
+        name:
+          type: string
+          description: The name of this project
+          minLength: 3
+          maxLength: 60
+        description:
+          type: string
+          description: A description of this project
+          maxLength: 200
+        archived:
+          type: boolean
+          description: Whether the project is archived or not
+        pinned:
+          type: boolean
+          description: Whether the project is pinned for the member or not
+        serviceCount:
+          type: integer
+          format: int32
+          description: The number of services in this project
+          minimum: 0
+        isOwner:
+          type: boolean
+          description: Whether the authenticated caller is the creator of this project
+        createdBy:
+          type: string
+          description: The name of the actor (member email or API key name) that created this project
+        createdByType:
+          $ref: "#/components/schemas/ActorType"
+        updatedBy:
+          type: string
+          description: The name of the actor (member email or API key name) that last updated this project or one of its services
+        updatedByType:
+          $ref: "#/components/schemas/ActorType"
+        createdAt:
+          type: string
+          format: date-time
+          description: The timestamp in UTC that the project was created
+        updatedAt:
+          type: string
+          format: date-time
+          description: The timestamp in UTC that the project or on of its its services was last updated
+
+    ProjectPage:
+      type: object
+      description: A paginated response containing projects
+      additionalProperties: false
+      required:
+        - data
+        - page
+        - size
+        - total
+        - totalPages
+        - first
+        - last
+      properties:
+        data:
+          type: array
+          description: The projects for this page
+          items:
+            $ref: "#/components/schemas/ProjectGet"
+        page:
+          type: integer
+          description: Current page number (0-based)
+          minimum: 0
+        size:
+          type: integer
+          description: Number of items per page
+          minimum: 1
+        total:
+          type: integer
+          description: Total number of projects
+          minimum: 0
+        totalPages:
+          type: integer
+          description: Total number of pages
+          minimum: 0
+        first:
+          type: boolean
+          description: Whether this is the first page
+        last:
+          type: boolean
+          description: Whether this is the last page
+
+    PinnedProject:
+      type: object
+      description: The pinned project
+      additionalProperties: false
+      required:
+        - projectId
+      properties:
+        projectId:
+          $ref: "#/components/schemas/ProjectId"
+        pinnedAt:
+          type: string
+          format: date-time
+          description: The timestamp in UTC that the project was pinned
+
+    ServiceCreate:
+      type: object
+      description: The service
+      additionalProperties: false
+      required:
+        - name
+      properties:
+        name:
+          $ref: "#/components/schemas/ServiceName"
+        description:
+          type: string
+          nullable: true
+          description: A description of this service
+          maxLength: 200
+        category:
+          type: string
+          nullable: true
+          description: The category relevant for this service (e.g. billing, reporting, etc.)
+          minLength: 1
+          maxLength: 60
+        owner:
+          type: string
+          nullable: true
+          description: The name of the team that owns this service
+          minLength: 1
+          maxLength: 60
+        flows:
+          type: array
+          nullable: true
+          description: The flows that this service belongs to
+          items:
+            type: string
+            description: Flow name
+            minLength: 1
+            maxLength: 100
+        consumes:
+          type: array
+          items:
+            $ref: "#/components/schemas/MessagingTopic"
+        produces:
+          type: array
+          items:
+            $ref: "#/components/schemas/MessagingTopic"
+        extras:
+          type: object
+          nullable: true
+          description: Custom key-value fields (max 20 pairs, keys max 100 chars, values max 500 chars)
+          maxProperties: 20
+          additionalProperties:
+            type: string
+            maxLength: 500
+
+    ServiceUpdate:
+      type: object
+      description: The service
+      additionalProperties: false
+      properties:
+        name:
+          $ref: "#/components/schemas/ServiceName"
+        description:
+          type: string
+          nullable: true
+          description: A description of this service
+          maxLength: 200
+        category:
+          type: string
+          nullable: true
+          description: The category relevant for this service (e.g. billing, reporting, etc.)
+          minLength: 1
+          maxLength: 60
+        owner:
+          type: string
+          nullable: true
+          description: The name of the team that owns this service
+          minLength: 1
+          maxLength: 60
+        flows:
+          type: array
+          nullable: true
+          description: The flows that this service belongs to
+          items:
+            type: string
+            description: Flow name
+            minLength: 1
+            maxLength: 100
+        consumes:
+          type: array
+          items:
+            $ref: "#/components/schemas/MessagingTopic"
+        produces:
+          type: array
+          items:
+            $ref: "#/components/schemas/MessagingTopic"
+        extras:
+          type: object
+          nullable: true
+          description: Custom key-value fields (max 20 pairs, keys max 100 chars, values max 500 chars)
+          maxProperties: 20
+          additionalProperties:
+            type: string
+            maxLength: 500
+
+    ServiceGet:
+      type: object
+      description: The service
+      additionalProperties: false
+      required:
+        - slug
+        - name
+        - createdBy
+        - createdByType
+        - createdAt
+        - updatedBy
+        - updatedByType
+        - updatedAt
+        - validFrom
+      properties:
+        slug:
+          type: string
+          description: The URL-friendly slug of the service
+        name:
+          $ref: "#/components/schemas/ServiceName"
+        description:
+          type: string
+          description: A description of this service
+          maxLength: 200
+        category:
+          type: string
+          description: The category relevant for this service (e.g. billing, reporting, etc.)
+          minLength: 1
+          maxLength: 60
+        owner:
+          type: string
+          description: The name of the team that owns this service
+          minLength: 1
+          maxLength: 60
+        flows:
+          type: array
+          description: The flows that this service belongs to
+          items:
+            type: string
+        consumes:
+          type: array
+          items:
+            $ref: "#/components/schemas/MessagingTopic"
+        produces:
+          type: array
+          items:
+            $ref: "#/components/schemas/MessagingTopic"
+        extras:
+          type: object
+          description: Custom key-value fields
+          additionalProperties:
+            type: string
+        createdBy:
+          type: string
+          description: The name of the actor (member email or API key name) that added this service in the project
+        createdByType:
+          $ref: "#/components/schemas/ActorType"
+        createdAt:
+          type: string
+          format: date-time
+          description: The timestamp in UTC that the service was added to the project
+        updatedBy:
+          type: string
+          description: The name of the actor (member email or API key name) that updated this service
+        updatedByType:
+          $ref: "#/components/schemas/ActorType"
+        updatedAt:
+          type: string
+          format: date-time
+          description: The timestamp in UTC that the service was updated
+        validFrom:
+          type: string
+          format: date-time
+          description: The timestamp in UTC that the service snapshot is valid from
+        validUntil:
+          type: string
+          format: date-time
+          description: The timestamp in UTC that the service snapshot is valid until (null for the latest service snapshot)
+
+    MessagingTopic:
+      type: object
+      description: A messaging topic (Kafka, RabbitMQ, etc.) that services can produce to or consume from
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          description: The name of the messaging topic (e.g., "order.created", "payment-queue")
+          minLength: 1
+          maxLength: 255
+        category:
+          type: string
+          nullable: true
+          description: The category relevant for this topic (e.g. billing, reporting, etc.)
+          minLength: 1
+          maxLength: 60
+        owner:
+          type: string
+          nullable: true
+          description: The name of the team that owns this topic
+          minLength: 1
+          maxLength: 60
+        flows:
+          type: array
+          nullable: true
+          description: The flows that this topic belongs to
+          items:
+            type: string
+            description: Flow name
+            minLength: 1
+            maxLength: 100
+        extras:
+          type: object
+          nullable: true
+          description: Custom key-value fields (max 20 pairs, keys max 100 chars, values max 500 chars)
+          maxProperties: 20
+          additionalProperties:
+            type: string
+            maxLength: 500
+
+    ServiceRaw:
+      type: object
+      description: Raw service data as stored in the database
+      additionalProperties: false
+      required:
+        - name
+        - consumes
+        - produces
+      properties:
+        name:
+          type: string
+          description: The name of this service
+        description:
+          type: string
+          nullable: true
+          description: A description of this service
+        category:
+          type: string
+          nullable: true
+          description: The category relevant for this service
+        owner:
+          type: string
+          nullable: true
+          description: The name of the team that owns this service
+        flows:
+          type: array
+          nullable: true
+          description: The flows that this service belongs to
+          items:
+            type: string
+            description: Flow name
+            minLength: 1
+            maxLength: 100
+        consumes:
+          type: array
+          items:
+            $ref: "#/components/schemas/MessagingTopic"
+        produces:
+          type: array
+          items:
+            $ref: "#/components/schemas/MessagingTopic"
+        extras:
+          type: object
+          nullable: true
+          description: Custom key-value fields
+          additionalProperties:
+            type: string
+
+    ProjectId:
+      type: string
+      description: An identifier (e.g., my-project-a1b2c)
+      pattern: "^[a-z0-9][a-z0-9-]*[a-z0-9]$"
+      minLength: 8
+      maxLength: 60
+
+    ServiceId:
+      type: string
+      description: The identifier of this service
+      pattern: "^[a-z]([a-z0-9_\\-]*[a-z0-9])?$"
+      minLength: 1
+      maxLength: 60
+
+    ServiceName:
+      type: string
+      description: The name of this service
+      minLength: 1
+      maxLength: 60
+
+    ProjectGraph:
+      type: object
+      description: Graph representation of a project with nodes and edges
+      additionalProperties: false
+      required:
+        - nodes
+        - edges
+      properties:
+        nodes:
+          type: array
+          description: The nodes in the graph (services and topics)
+          items:
+            $ref: "#/components/schemas/GraphNode"
+        edges:
+          type: array
+          description: The edges connecting nodes
+          items:
+            $ref: "#/components/schemas/GraphEdge"
+
+    GraphNode:
+      type: object
+      description: A node in the project graph
+      additionalProperties: false
+      required:
+        - id
+        - type
+        - label
+        - width
+        - height
+        - x
+        - y
+      properties:
+        id:
+          type: string
+          description: Unique identifier for the node
+        type:
+          $ref: "#/components/schemas/GraphNodeType"
+        label:
+          type: string
+          description: Display label for the node
+        width:
+          type: number
+          format: double
+          description: Width of the node
+        height:
+          type: number
+          format: double
+          description: Height of the node
+        x:
+          type: number
+          format: double
+          description: X coordinate of the node
+        y:
+          type: number
+          format: double
+          description: Y coordinate of the node
+        category:
+          type: string
+          description: Category ID of the node
+        categoryLabel:
+          type: string
+          description: Category display name
+        categoryColor:
+          type: string
+          description: Category color for visual representation
+        owner:
+          type: string
+          description: Owner ID of the node
+        ownerLabel:
+          type: string
+          description: Owner display name
+        ownerColor:
+          type: string
+          description: Owner color for visual representation
+        flows:
+          type: array
+          description: Flow IDs that the node belongs to
+          items:
+            type: string
+        flowLabels:
+          type: array
+          description: Flow display names
+          items:
+            type: string
+        flowColors:
+          type: array
+          description: Flow colors for visual representation
+          items:
+            type: string
+
+    GraphEdge:
+      type: object
+      description: An edge connecting two nodes in the graph
+      additionalProperties: false
+      required:
+        - id
+        - type
+        - source
+        - target
+      properties:
+        id:
+          type: string
+          description: Unique identifier for the edge
+        type:
+          $ref: "#/components/schemas/GraphEdgeType"
+        source:
+          type: string
+          description: ID of the source node
+        target:
+          type: string
+          description: ID of the target node
+
+    GraphNodeType:
+      type: string
+      description: Type of graph node
+      enum:
+        - SERVICE
+        - TOPIC
+
+    GraphEdgeType:
+      type: string
+      description: Type of graph edge
+      enum:
+        - SERVICE_TO_TOPIC
+        - TOPIC_TO_SERVICE
+
+    EntityType:
+      type: string
+      description: Type of entity
+      enum:
+        - Service
+        - Messaging
+        - Category
+        - Owner
+        - Flow
+
+    ProjectEntities:
+      type: object
+      description: All entities and their relationships in a project
+      additionalProperties: false
+      required:
+        - services
+        - messaging
+        - categories
+        - owners
+        - flows
+      properties:
+        services:
+          type: object
+          description: Service entities indexed by ID
+          additionalProperties:
+            $ref: "#/components/schemas/ServiceEntity"
+        messaging:
+          type: object
+          description: Messaging entities indexed by ID
+          additionalProperties:
+            $ref: "#/components/schemas/MessagingEntity"
+        categories:
+          type: object
+          description: Category entities indexed by ID
+          additionalProperties:
+            $ref: "#/components/schemas/CategoryEntity"
+        owners:
+          type: object
+          description: Owner entities indexed by ID
+          additionalProperties:
+            $ref: "#/components/schemas/OwnerEntity"
+        flows:
+          type: object
+          description: Flow entities indexed by ID
+          additionalProperties:
+            $ref: "#/components/schemas/FlowEntity"
+
+    BaseEntity:
+      type: object
+      description: Base entity with common fields
+      additionalProperties: false
+      required:
+        - id
+        - name
+        - type
+      properties:
+        id:
+          type: string
+          description: Unique identifier for the entity
+        name:
+          type: string
+          description: Name of the entity
+        type:
+          $ref: "#/components/schemas/EntityType"
+
+    ServiceEntity:
+      allOf:
+        - $ref: "#/components/schemas/BaseEntity"
+        - type: object
+          additionalProperties: false
+          properties:
+            slug:
+              type: string
+              description: URL-friendly slug of the service
+            description:
+              type: string
+              description: A description of this service
+            flows:
+              type: array
+              description: The flows that this service belongs to
+              items:
+                type: string
+            category:
+              type: string
+              description: Category ID this service belongs to
+            owner:
+              type: string
+              description: Owner ID of this service
+            produces:
+              type: array
+              description: IDs of messaging topics this service produces to
+              items:
+                type: string
+            consumes:
+              type: array
+              description: IDs of messaging topics this service consumes from
+              items:
+                type: string
+            extras:
+              type: object
+              description: Custom key-value fields
+              additionalProperties:
+                type: string
+
+    MessagingEntity:
+      allOf:
+        - $ref: "#/components/schemas/BaseEntity"
+        - type: object
+          additionalProperties: false
+          properties:
+            category:
+              type: string
+              description: Category ID this messaging entity belongs to
+            owner:
+              type: string
+              description: Owner ID of this messaging entity
+            flows:
+              type: array
+              description: Flow IDs that this messaging entity belongs to
+              items:
+                type: string
+            consumers:
+              type: array
+              description: IDs of services that consume this topic
+              items:
+                type: string
+            producers:
+              type: array
+              description: IDs of services that produce to this topic
+              items:
+                type: string
+            extras:
+              type: object
+              description: Custom key-value fields
+              additionalProperties:
+                type: string
+
+    CategoryEntity:
+      allOf:
+        - $ref: "#/components/schemas/BaseEntity"
+        - type: object
+          additionalProperties: false
+          required:
+            - color
+          properties:
+            color:
+              type: string
+              description: Color for visual representation
+            services:
+              type: array
+              description: IDs of services in this category
+              items:
+                type: string
+            messaging:
+              type: array
+              description: IDs of messaging topics in this category
+              items:
+                type: string
+
+    OwnerEntity:
+      allOf:
+        - $ref: "#/components/schemas/BaseEntity"
+        - type: object
+          additionalProperties: false
+          required:
+            - color
+          properties:
+            color:
+              type: string
+              description: Color for visual representation
+            services:
+              type: array
+              description: IDs of services owned by this owner
+              items:
+                type: string
+            messaging:
+              type: array
+              description: IDs of messaging topics owned by this owner
+              items:
+                type: string
+
+    FlowEntity:
+      allOf:
+        - $ref: "#/components/schemas/BaseEntity"
+        - type: object
+          additionalProperties: false
+          required:
+            - color
+          properties:
+            color:
+              type: string
+              description: Color for visual representation
+            services:
+              type: array
+              description: IDs of services participating in this flow
+              items:
+                type: string
+            messaging:
+              type: array
+              description: IDs of messaging topics used in this flow
+              items:
+                type: string
+
+    AiChatMessage:
+      type: object
+      additionalProperties: false
+      required:
+        - role
+        - content
+      properties:
+        role:
+          type: string
+          description: The role of the message author (e.g. "user" or "assistant")
+        content:
+          type: string
+          description: The message content
+
+    AiChatRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - messages
+      properties:
+        messages:
+          type: array
+          description: The full conversation history including the latest user message
+          items:
+            $ref: "#/components/schemas/AiChatMessage"
+
+    AiChatResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - message
+      properties:
+        message:
+          $ref: "#/components/schemas/AiChatMessage"
+
+    ServiceChangeType:
+      type: string
+      enum:
+        - CREATE
+        - UPDATE
+        - DELETE
+
+    ServiceChange:
+      type: object
+      additionalProperties: false
+      required:
+        - snapshotId
+        - serviceSlug
+        - serviceName
+        - changeType
+        - actorName
+        - actorType
+        - timestamp
+      properties:
+        snapshotId:
+          type: string
+          format: uuid
+        serviceSlug:
+          type: string
+        serviceName:
+          type: string
+        changeType:
+          $ref: "#/components/schemas/ServiceChangeType"
+        actorName:
+          type: string
+        actorType:
+          $ref: "#/components/schemas/ActorType"
+        timestamp:
+          type: string
+          format: date-time
+
+    ProjectHistory:
+      type: object
+      additionalProperties: false
+      required:
+        - events
+        - totalCount
+      properties:
+        events:
+          type: array
+          items:
+            $ref: "#/components/schemas/ServiceChange"
+        totalCount:
+          type: integer
+
+    ServiceSnapshotDiff:
+      type: object
+      additionalProperties: false
+      properties:
+        before:
+          $ref: "#/components/schemas/ServiceRaw"
+          nullable: true
+        after:
+          $ref: "#/components/schemas/ServiceRaw"
+          nullable: true

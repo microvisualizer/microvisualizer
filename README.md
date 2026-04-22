@@ -1,16 +1,31 @@
-## Hi there 👋
+# MicroVisualizer
 
-<!--
-**microvisualizer/microvisualizer** is a ✨ _special_ ✨ repository because its `README.md` (this file) appears on your GitHub profile.
+MicroVisualizer is a tool for visualizing microservices architecture. Define services, messaging topics, and their relationships to generate an interactive graph of your system.
 
-Here are some ideas to get you started:
+## Repository
 
-- 🔭 I’m currently working on ...
-- 🌱 I’m currently learning ...
-- 👯 I’m looking to collaborate on ...
-- 🤔 I’m looking for help with ...
-- 💬 Ask me about ...
-- 📫 How to reach me: ...
-- 😄 Pronouns: ...
-- ⚡ Fun fact: ...
--->
+This repo contains the public-facing website for MicroVisualizer, including the API specification and documentation.
+
+- **`api/`** — OpenAPI specification (`microvisualizer-v1.yaml`)
+- **`docs/`** — User and integration guides
+- **`.github/workflows/`** — GitHub Actions for deploying to GitHub Pages
+
+## Website
+
+The site is built with [Astro](https://astro.build/) and [Starlight](https://starlight.astro.build/), and hosted on [GitHub Pages](https://pages.github.com/).
+
+### Deployment
+
+1. Enable GitHub Pages in repository settings (Settings → Pages → Source: **GitHub Actions**).
+2. Pushes to `main` trigger the [`deploy.yml`](.github/workflows/deploy.yml) workflow automatically.
+
+### Local development
+
+```bash
+npm install
+npm run start
+```
+
+## API
+
+The API definition is available at [`api/microvisualizer-v1.yaml`](api/microvisualizer-v1.yaml) and browsable interactively at `/api` on the deployed site.

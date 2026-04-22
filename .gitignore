@@ -1,0 +1,25 @@
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Node
+node_modules/
+npm-debug.log*
+
+# Misc
+*.log
+*.swp
+*.swo
+*~
+.env
+.env.local
+.env.*.local
+
+# Astro
+/dist
+/.astro
