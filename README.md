@@ -1,31 +1,37 @@
 # MicroVisualizer
 
-MicroVisualizer is a tool for visualizing microservices architecture. Define services, messaging topics, and their relationships to generate an interactive graph of your system.
+**Your architecture, visualized from code.**
 
-## Repository
+Define your microservices as code. MicroVisualizer generates interactive diagrams, maps event flows through topics and queues, and exposes the full topology to a built-in AI assistant.
 
-This repo contains the public-facing website for MicroVisualizer, including the API specification and documentation.
+---
 
-- **`api/`** — OpenAPI specification (`microvisualizer-v1.yaml`)
-- **`docs/`** — User and integration guides
-- **`.github/workflows/`** — GitHub Actions for deploying to GitHub Pages
+## The problem
 
-## Website
+Once you pass a dozen services, nobody has the full picture. Ownership lives in `CODEOWNERS`. Topics live in Kafka admin UIs. Flows live in engineers' heads. Nothing ties them together.
 
-The site is built with [Astro](https://astro.build/) and [Starlight](https://starlight.astro.build/), and hosted on [GitHub Pages](https://pages.github.com/).
+## What you get
 
-### Deployment
+- **Auto-generated diagrams** — push service definitions from CI, the graph updates as soon as something changes. No hand-drawn maps to keep current.
+- **Multi-team topology** — services owned by different teams land in one shared graph. Filter by flow, category, or owner.
+- **Event-flow mapping** — producers, consumers, and the topics between them, rendered as first-class nodes.
+- **Built-in AI assistant** — ask *"who consumes `order-events`?"* or *"who owns the checkout flow?"* and get answers grounded in your actual topology.
+- **MCP server** — feed the topology to Claude, Cursor, and other AI tools so they understand what your repo connects to.
+- **Exports** — Mermaid, SVG, PNG, JSON, and shareable public links.
 
-1. Enable GitHub Pages in repository settings (Settings → Pages → Source: **GitHub Actions**).
-2. Pushes to `main` trigger the [`deploy.yml`](.github/workflows/deploy.yml) workflow automatically.
+## Plugs into your workflow
 
-### Local development
+**Input** — REST API · GitHub Actions · JavaScript / Java / Python SDKs · JSON
 
-```bash
-npm install
-npm run start
-```
+**Output** — Browser · REST API · MCP · Mermaid · SVG · PNG · JSON · Share link
 
-## API
+## Links
 
-The API definition is available at [`api/microvisualizer-v1.yaml`](api/microvisualizer-v1.yaml) and browsable interactively at `/api` on the deployed site.
+- **[microvisualizer.com](https://microvisualizer.com)** — product site and sign-up
+- **[docs.microvisualizer.com](https://docs.microvisualizer.com)** — documentation
+- **[docs.microvisualizer.com/api](https://docs.microvisualizer.com/api)** — API reference
+- Support: `support@microvisualizer.com`
+
+---
+
+This repository hosts the public documentation site and the OpenAPI specification.

@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <style>
+    text { fill: #0f172a; }
+    @media (prefers-color-scheme: dark) { text { fill: #f1f5f9; } }
+  </style>
+  <text x="16" y="23" font-family="'IBM Plex Mono', ui-monospace, monospace" font-size="22" font-weight="600" text-anchor="middle">
+    <tspan fill="#4a47e5">[</tspan><tspan>mv</tspan><tspan fill="#4a47e5">]</tspan>
+  </text>
+</svg>

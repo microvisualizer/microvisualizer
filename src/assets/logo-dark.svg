@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 56 32" role="img" aria-label="MicroVisualizer">
   <text x="28" y="24" font-family="'IBM Plex Mono', ui-monospace, monospace" font-size="24" font-weight="600" text-anchor="middle">
-    <tspan fill="#4a47e5">[</tspan><tspan fill="currentColor">mv</tspan><tspan fill="#4a47e5">]</tspan>
+    <tspan fill="#605bff">[</tspan><tspan fill="#ffffff">mv</tspan><tspan fill="#605bff">]</tspan>
   </text>
 </svg>

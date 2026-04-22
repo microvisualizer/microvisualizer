@@ -7,7 +7,8 @@ export default defineConfig({
   integrations: [
     starlight({
       title: 'MicroVisualizer',
-      logo: {src: './src/assets/logo.svg'},
+      logo: {light: './src/assets/logo-light.svg', dark: './src/assets/logo-dark.svg'},
+      favicon: '/favicon.svg',
       customCss: ['./src/styles/custom.css'],
       social: [
         {
