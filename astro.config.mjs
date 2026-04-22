@@ -3,7 +3,7 @@ import starlight from '@astrojs/starlight';
 import starlightOpenAPI, {openAPISidebarGroups} from 'starlight-openapi';
 
 export default defineConfig({
-  site: 'https://microvisualizer.github.io',
+  site: 'https://docs.microvisualizer.com',
   integrations: [
     starlight({
       title: 'MicroVisualizer',
